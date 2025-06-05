@@ -27,7 +27,7 @@ class JsonParser(schema: StructType) {
           (StructType(Array(StructField("value", other))), other)
       }
 
-      val rawParser = new JacksonParser(actualSchema, parsedOptions, allowArrayAsStructs = false)
+      val rawParser: JacksonParser = new JacksonParser(actualSchema, parsedOptions, allowArrayAsStructs = false)
       val createParser = CreateJacksonParser.utf8String _
 
       new FailureSafeParser[UTF8String](

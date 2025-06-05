@@ -1,9 +1,11 @@
 package org.apache.spark.sql.hybrid
 
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.expressions.JsonToStructs
 import org.apache.spark.sql.catalyst.json.{JSONOptions, JacksonGenerator}
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.unsafe.types.UTF8String
+import org.apache.spark.sql.functions.from_json
 
 import java.io.CharArrayWriter
 
@@ -31,6 +33,10 @@ class RowConverter(dataType: StructType) {
       }
     }
 
-    Iterator(converter(input.next()).toString)
+    input.map {
+      row => converter(row).toString
+    }
+
+//    Iterator(converter(input.next()).toString)
   }
 }

@@ -17,10 +17,15 @@ class RowConverterTest extends AnyFlatSpec with should.Matchers {
       .getOrCreate()
 
   "Converter" should "work" in {
-    val data: Dataset[lang.Long] = spark.range(1)
+    val data: Dataset[lang.Long] = spark.range(0, 10, 1, 1)
+    data.collect().foreach(println)
     val rows: Iterator[InternalRow] = data.queryExecution.toRdd.collect().toIterator
+
+
     val converter: RowConverter = new RowConverter(data.schema)
     val out: Iterator[String] = converter.toJsonString(rows)
-    out.toList.foreach(println)
+    while (out.hasNext) {
+      println(out.next())
+    }
   }
 }
