@@ -68,7 +68,7 @@ class HybridJson extends CreatableRelationProvider
     val path = parameters.getOrElse("path",
       throw new IllegalArgumentException("path must be specified !!!"))
 
-    new CsvRelation(schema, path)
+    new JsonRelation(schema, path)
   }
 
 }

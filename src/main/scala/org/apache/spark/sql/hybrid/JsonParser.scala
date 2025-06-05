@@ -30,6 +30,8 @@ class JsonParser(schema: StructType) {
       val rawParser: JacksonParser = new JacksonParser(actualSchema, parsedOptions, allowArrayAsStructs = false)
       val createParser = CreateJacksonParser.utf8String _
 
+//      rawParser.parse(input, createParser, identity[UTF8String])
+
       new FailureSafeParser[UTF8String](
         input => rawParser.parse(input, createParser, identity[UTF8String]),
         mode = PermissiveMode,
@@ -37,7 +39,13 @@ class JsonParser(schema: StructType) {
         columnNameOfCorruptRecord = nameOfCorruptRecord)
     }
 
-    parser.parse(UTF8String.fromString(input.next()))
+    input.map {
+
+      str => parser.parse(UTF8String.fromString(str)).next()
+
+    }
+
+//    parser.parse(UTF8String.fromString(input.next()))
 
   }
 

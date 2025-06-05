@@ -6,7 +6,7 @@ import org.apache.spark.sql.{Row, SQLContext, SparkSession}
 import org.apache.spark.sql.sources.{BaseRelation, TableScan}
 import org.apache.spark.sql.types.StructType
 
-class CsvRelation(inputSchema: StructType, path: String)
+class JsonRelation(inputSchema: StructType, path: String)
   extends BaseRelation
     with TableScan
     with Logging{
@@ -15,7 +15,7 @@ class CsvRelation(inputSchema: StructType, path: String)
 
   override def schema: StructType = inputSchema
 
-  override def buildScan(): RDD[Row] = new CsvRDD(path, schema).asInstanceOf[RDD[Row]]
+  override def buildScan(): RDD[Row] = new JsonRDD(path, schema).asInstanceOf[RDD[Row]]
 
   override def needConversion: Boolean = false
 }

@@ -7,7 +7,7 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.StructType
 
-class CsvRDD(path: String, schema: StructType)
+class JsonRDD(path: String, schema: StructType)
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
     with Logging {
 
