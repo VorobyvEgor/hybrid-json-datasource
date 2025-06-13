@@ -7,31 +7,41 @@ import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.StructType
 
-class JsonRDD(path: String, schema: StructType)
+import scala.io.BufferedSource
+
+class JsonRDD(files: Seq[(String, Long)], schema: StructType)
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
     with Logging {
 
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
-    val filePath = split.asInstanceOf[CsvPartition].path
-    val file = scala.io.Source.fromFile(filePath)
+    val filePath: String = split.asInstanceOf[JsonPartition].path
+    val fileWriteTime: Long = split.asInstanceOf[JsonPartition].writeTime
+    val file: BufferedSource = scala.io.Source.fromFile(filePath)
     val lines: Iterator[String] = file.getLines()
 
     val parser = new JsonParser(schema)
-    parser.toRow(lines)
+    parser.toRow(lines).map(
+      (line: InternalRow) => {
+        log.info(s"Line for parsing: ${line.toString}\n")
+        val row = InternalRow.fromSeq(Seq(fileWriteTime) ++ line.toSeq(schema))
+        log.info(s"Row for reading: ${row.toString}\n")
+        row
+      }
+    )
 
   }
 
   override protected def getPartitions: Array[Partition] = {
-    val files = FileHelper.getFiles(path)
-    log.info(s"Files: \n ${files.map(_.getName).mkString("\n")} \n end file list ---")
 
-    val parts: Array[CsvPartition] = files.map { f => f.getAbsolutePath }.zipWithIndex.map {
-      case (f, i) => CsvPartition(i, f)
-    }
+    log.info(s"Files: \n ${files.mkString("\n")} \n end file list ---")
+
+    val parts: Array[JsonPartition] = files.zipWithIndex.map {
+      case (f, i) => JsonPartition(i, f._1, f._2)
+    }.toArray
     log.info(s"Partitions: ${parts.mkString(",")}")
 
     parts.asInstanceOf[Array[Partition]]
   }
 }
 
-case class CsvPartition(index: Int, path: String) extends Partition
+case class JsonPartition(index: Int, path: String, writeTime: Long) extends Partition
