@@ -3,10 +3,13 @@ package org.apache.spark.sql.hybrid
 import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.catalyst.dsl.expressions.DslSymbol
 import org.apache.spark.sql.types._
 import org.apache.spark.sql.{DataFrame, Row, SparkSession}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should
+
+import scala.collection.immutable.Range.Int
 
 class HybridJsonTest extends AnyFlatSpec
   with should.Matchers
@@ -50,35 +53,27 @@ class HybridJsonTest extends AnyFlatSpec
     println(s"===============================${df.count}====================")
   }
 
-  "Hybrid JSON" should "parse schema" in {
+  "Hybrid JSON" should "write column stats" in {
 
-    val schemaStr1 = "{\"type\":\"struct\",\"fields\":[{\"name\":\"id\",\"type\":\"integer\",\"nullable\":true,\"metadata\":{}}]}"
-//
-    val schemaStr2 = "{\"type\":\"struct\",\"fields\":[{\"name\":\"value\",\"type\":\"string\",\"nullable\":true,\"metadata\":{}}]}"
-//
-    val schemaCommit = StructType(StructField("__commitMillis", LongType) :: Nil)
-//
-    val schemas: Seq[String] = Seq(schemaStr1, schemaStr2)
-//
-    val schema: StructType = schemas.map(str => StructType.fromString(str)).reduce(_ merge _)
-//
-////    val schema = StructType.fromString(schemaStr)
-//
-//    schema.printTreeString()
-//
-    val resultSchema: StructType = schemaCommit.merge(schema)
-    resultSchema.printTreeString()
-//
-//    val df_mil: RDD[Row] = spark.sparkContext.parallelize(Seq(Row(737383.toLong)))
-//    val df_id: RDD[Row] = SparkSession.active.sparkContext.parallelize(Seq(Row(7)))
-//
-//    spark.createDataFrame(df_mil.++(df_id), schemaCommit).show
+    import spark.implicits._
 
-    val row1 = InternalRow.fromSeq(Seq(88494940, 7, "test"))
+    val df = spark
+      .range(0, 20, 1, 1)
+      .withColumn("id", 'id.cast("int"))
+      .withColumn("id2", 'id * 2)
 
-    println(InternalRow.fromSeq(Seq(83838) ++ row1.toSeq(resultSchema)))
+    df.show()
+    df.printSchema()
+    val schema = df.schema
 
-//    spark.createDataFrame(spark.sparkContext.parallelize(Seq(InternalRow(FileIndex("test1", "where", 3993939)))))
+    val intStructs: Seq[(StructField, Int)] = schema.zipWithIndex
+      .filter { case (field, _) => field.dataType == IntegerType }
+
+    log.info(s"parse Schema: ${intStructs.mkString("||")}")
+
+    df.write.format("hybrid-json")
+      .options(optionsWrite)
+      .save()
 
 
 

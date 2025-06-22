@@ -29,16 +29,17 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import org.mongodb.scala.model.Filters._
 
+case class ColumnStat(name: String, min: Int, max: Int)
 
-case class FileIndex(objectName: String, path: String, commitMillis: Long)
+case class FileIndex(objectName: String, path: String, commitMillis: Long, columnStats: Seq[ColumnStat])
 
 case class SchemaIndex(objectName: String, schemaRef: String, commitMillis: Long)
 
 object MongoConnection extends Logging {
 
 
-  //  private val uri: String = "mongodb://192.168.1.42:27017"
-  private val uri = System.getenv("MONGO_URI")
+    private val uri: String = "mongodb://192.168.1.42:27017"
+//  private val uri = System.getenv("MONGO_URI")
 
   @transient lazy val mongoClient: MongoClient = MongoClient(uri)
   @transient lazy val mongoDatabase: MongoDatabase = mongoClient.getDatabase("index_store")
@@ -46,7 +47,8 @@ object MongoConnection extends Logging {
 
   def writeFileIndex(collectionName: String,
                      objectName: String,
-                     path: String) = {
+                     path: String,
+                     columnStat: Seq[ColumnStat]) = {
 
     val codec: CodecRegistry = CodecRegistries.fromRegistries(
       CodecRegistries.fromProviders(classOf[FileIndex]), DEFAULT_CODEC_REGISTRY)
@@ -56,7 +58,9 @@ object MongoConnection extends Logging {
     @transient lazy val fileCollection: MongoCollection[FileIndex] =
       dataBase.getCollection(collectionName = collectionName)
 
-    fileCollection.insertOne(FileIndex(objectName, path, System.currentTimeMillis())).subscribe(
+    log.info(s"ColumnStats for writing: ${columnStat.mkString("||")}")
+
+    fileCollection.insertOne(FileIndex(objectName, path, System.currentTimeMillis(), columnStat)).subscribe(
       (result: Completed) => log.info("Document inserted"),
       (e: Throwable) => log.info(s"Failed with error: ${e.getMessage}"),
       () => log.info("Insertion complete")

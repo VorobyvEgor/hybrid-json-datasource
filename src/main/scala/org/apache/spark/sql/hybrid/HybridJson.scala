@@ -5,12 +5,14 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
 import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider, SchemaRelationProvider}
-import org.apache.spark.sql.types.StructType
+import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
 import org.bson.codecs.configuration.{CodecRegistries, CodecRegistry}
 import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY
 
 import java.util.UUID
+import scala.collection.immutable
+import scala.collection.mutable.ListBuffer
 
 class HybridJson extends CreatableRelationProvider
   with DataSourceRegister
@@ -42,18 +44,26 @@ class HybridJson extends CreatableRelationProvider
     rdd.foreachPartition {
 
       p: Iterator[InternalRow] => {
+
         val converter = new RowConverter(schema)
         val res: Iterator[String] = converter.toJsonString(p)
         val fileName = path + "/" + UUID.randomUUID().toString + ".json"
 
         FileHelper.write(fileName, res)
 
-//        val test: Long = p.reduce((row1, row2) => Math.max(row1.getLong(1), row2.getLong(2)))
+        val minMax: Map[String, (Int, Int)] = converter.getMinMax
+
+        println("Min and Max values for Integer fields:")
+        val integerFieldsStats: Seq[ColumnStat] = minMax.map {
+          case (columnName, (minValue, maxValue)) => ColumnStat(columnName, min = minValue, max = maxValue)
+        }.toSeq
+
 
         MongoConnection.writeFileIndex(
           collectionName = "file_index",
           objectName = objectName,
-          path = fileName
+          path = fileName,
+          columnStat = integerFieldsStats
         )
 
         println(s"Info about $fileName has written to Mongo with object $objectName")
