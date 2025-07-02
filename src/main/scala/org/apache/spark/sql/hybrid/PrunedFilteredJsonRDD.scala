@@ -5,17 +5,22 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.catalyst.InternalRow
+import org.apache.spark.sql.sources.Filter
 import org.apache.spark.sql.types.StructType
 
 import scala.io.BufferedSource
 
-class JsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])], schema: StructType)
+class PrunedFilteredJsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])],
+                            schema: StructType,
+                            filters: Array[Filter])
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
     with Logging {
 
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     val filePath: String = split.asInstanceOf[JsonPartition].path
     val fileWriteTime: Long = split.asInstanceOf[JsonPartition].writeTime
+    val columnStat: Seq[Map[String, Any]] = split.asInstanceOf[JsonPartition].columnStat
+
     val file: BufferedSource = scala.io.Source.fromFile(filePath)
     val lines: Iterator[String] = file.getLines()
 
@@ -44,4 +49,4 @@ class JsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])], schema: StructT
   }
 }
 
-case class JsonPartition(index: Int, path: String, writeTime: Long, columnStat: Seq[Map[String, Any]]) extends Partition
+//case class JsonPartition(index: Int, path: String, writeTime: Long, columnStat: Seq[ColumnStat]) extends Partition

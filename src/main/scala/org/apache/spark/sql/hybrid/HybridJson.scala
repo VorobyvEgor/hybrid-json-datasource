@@ -55,7 +55,7 @@ class HybridJson extends CreatableRelationProvider
 
         println("Min and Max values for Integer fields:")
         val integerFieldsStats: Seq[ColumnStat] = minMax.map {
-          case (columnName, (minValue, maxValue)) => ColumnStat(columnName, min = minValue, max = maxValue)
+          case (columnName, (minValue, maxValue)) => ColumnStat(columnName, minValue, maxValue)
         }.toSeq
 
 

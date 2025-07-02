@@ -29,17 +29,19 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import org.mongodb.scala.model.Filters._
 
+import java.{lang, util}
+
 case class ColumnStat(name: String, min: Int, max: Int)
 
-case class FileIndex(objectName: String, path: String, commitMillis: Long, columnStats: Seq[ColumnStat])
+case class FileIndex(objectName: String, path: String, commitMillis: Long, columnStats: Seq[Map[String, Any]])
 
 case class SchemaIndex(objectName: String, schemaRef: String, commitMillis: Long)
 
 object MongoConnection extends Logging {
 
 
-    private val uri: String = "mongodb://192.168.1.42:27017"
-//  private val uri = System.getenv("MONGO_URI")
+//    private val uri: String = "mongodb://192.168.1.42:27017"
+  private val uri = System.getenv("MONGO_URI")
 
   @transient lazy val mongoClient: MongoClient = MongoClient(uri)
   @transient lazy val mongoDatabase: MongoDatabase = mongoClient.getDatabase("index_store")
@@ -60,7 +62,15 @@ object MongoConnection extends Logging {
 
     log.info(s"ColumnStats for writing: ${columnStat.mkString("||")}")
 
-    fileCollection.insertOne(FileIndex(objectName, path, System.currentTimeMillis(), columnStat)).subscribe(
+    fileCollection.insertOne(FileIndex(objectName, path, System.currentTimeMillis()
+      , columnStat.map(stat => {
+        Map(
+          "name" -> stat.name,
+          "min" -> stat.min,
+          "max" -> stat.max
+        )
+      }))
+    ).subscribe(
       (result: Completed) => log.info("Document inserted"),
       (e: Throwable) => log.info(s"Failed with error: ${e.getMessage}"),
       () => log.info("Insertion complete")
@@ -99,28 +109,45 @@ object MongoConnection extends Logging {
 
   }
 
-  def readInfo(objectName: String): (Seq[(String, Long)], StructType) = {
+  def readInfo(objectName: String): (Seq[(String, Long, Seq[Map[String, Any]])], StructType) = {
 
     val codecFile: CodecRegistry = CodecRegistries.fromRegistries(
+      CodecRegistries.fromProviders(classOf[ColumnStat]),
       CodecRegistries.fromProviders(classOf[FileIndex]), DEFAULT_CODEC_REGISTRY)
 
     val codecSchema: CodecRegistry = CodecRegistries.fromRegistries(
       CodecRegistries.fromProviders(classOf[SchemaIndex]), DEFAULT_CODEC_REGISTRY)
 
     @transient lazy val fileCollection: MongoCollection[FileIndex] =
-      mongoDatabase.withCodecRegistry(codecFile).getCollection(collectionName = "file_index")
+      mongoDatabase
+        .withCodecRegistry(codecFile)
+        .getCollection(collectionName = "file_index")
 
     @transient lazy val schemaCollection: MongoCollection[SchemaIndex] =
       mongoDatabase.withCodecRegistry(codecSchema).getCollection(collectionName = "schema_index")
 
     val filter: Bson = Filters.eq("objectName", objectName)
 
-    val filesFuture: Future[Seq[(String, Long)]] = fileCollection.find(filter).collect().toFuture().map(
+    val filesFuture: Future[Seq[(String, Long, Seq[Map[String, Any]])]] = fileCollection.find(filter).collect().toFuture().map(
       (rows: Seq[FileIndex]) => rows.map((row: FileIndex) => {
-        (row.path, row.commitMillis)
+        (row.path, row.commitMillis, row.columnStats)
       })
     )
-    val files: Seq[(String, Long)] = Await.result(filesFuture, 30.seconds)
+
+//    val filesFuture: Future[Seq[(String, Long, Seq[ColumnStat])]] = fileCollection.find(filter).collect().toFuture().map(
+//      (rows: Seq[Document]) => rows.map((row: Document) => {
+//        val objectName: String = row.getString("objectName")
+//        val commitMillis: lang.Long = row.getLong("commitMillis")
+//        val columnStats: util.List[Document] = row.getList("columnStats", classOf[Document]).toArray().map(
+//          (statDoc: Document) => {
+//
+//          }
+//        )
+//        (objectName, commitMillis.toLong, columnStats)
+//      })
+//    )
+
+    val files: Seq[(String, Long, Seq[Map[String, Any]])] = Await.result(filesFuture, 30.seconds)
 
     log.info(s"Files for read ${files.mkString(", ")}")
 
