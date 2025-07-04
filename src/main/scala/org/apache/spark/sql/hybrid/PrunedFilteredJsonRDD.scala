@@ -10,7 +10,7 @@ import org.apache.spark.sql.types.StructType
 
 import scala.io.BufferedSource
 
-class PrunedFilteredJsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])],
+class PrunedFilteredJsonRDD(files: Seq[(String, Long, Seq[ColumnStat])],
                             schema: StructType,
                             filters: Array[Filter])
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
@@ -19,7 +19,7 @@ class PrunedFilteredJsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])],
   override def compute(split: Partition, context: TaskContext): Iterator[InternalRow] = {
     val filePath: String = split.asInstanceOf[JsonPartition].path
     val fileWriteTime: Long = split.asInstanceOf[JsonPartition].writeTime
-    val columnStat: Seq[Map[String, Any]] = split.asInstanceOf[JsonPartition].columnStat
+    val columnStat: Seq[ColumnStat] = split.asInstanceOf[JsonPartition].columnStat
 
     val file: BufferedSource = scala.io.Source.fromFile(filePath)
     val lines: Iterator[String] = file.getLines()

@@ -8,8 +8,9 @@ import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.types.StructType
 
 import scala.io.BufferedSource
+import java.util
 
-class JsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])], schema: StructType)
+class JsonRDD(files: Seq[(String, Long, Seq[ColumnStat])], schema: StructType)
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
     with Logging {
 
@@ -44,4 +45,4 @@ class JsonRDD(files: Seq[(String, Long, Seq[Map[String, Any]])], schema: StructT
   }
 }
 
-case class JsonPartition(index: Int, path: String, writeTime: Long, columnStat: Seq[Map[String, Any]]) extends Partition
+case class JsonPartition(index: Int, path: String, writeTime: Long, columnStat: Seq[ColumnStat]) extends Partition

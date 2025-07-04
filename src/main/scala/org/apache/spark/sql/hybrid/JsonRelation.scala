@@ -6,7 +6,9 @@ import org.apache.spark.sql.{Row, SQLContext, SparkSession}
 import org.apache.spark.sql.sources.{BaseRelation, EqualTo, Filter, GreaterThan, GreaterThanOrEqual, IsNotNull, LessThan, LessThanOrEqual, PrunedFilteredScan, StringContains, TableScan}
 import org.apache.spark.sql.types.{LongType, StructField, StructType}
 
-class JsonRelation(inputSchema: StructType, files: Seq[(String, Long, Seq[Map[String, Any]])])
+import java.util
+
+class JsonRelation(inputSchema: StructType, files: Seq[(String, Long, Seq[ColumnStat])])
   extends BaseRelation
     with TableScan
     with PrunedFilteredScan

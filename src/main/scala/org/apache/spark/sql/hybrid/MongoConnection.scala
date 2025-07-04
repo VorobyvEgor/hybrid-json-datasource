@@ -3,12 +3,6 @@ package org.apache.spark.sql.hybrid
 import org.apache.commons.collections.collection.TypedCollection
 import org.apache.spark.Success
 import org.apache.spark.internal.Logging
-import org.apache.spark.sql.Column
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.codegen.CodegenFallback
-import org.apache.spark.sql.catalyst.expressions.{ExpectsInputTypes, Expression, Nondeterministic, UnaryExpression}
-import org.apache.spark.sql.expressions.UserDefinedFunction
-import org.apache.spark.sql.functions.udf
 import org.apache.spark.sql.types.{AbstractDataType, DataType, StringType, StructField, StructType, TypeCollection}
 import org.apache.spark.unsafe.types.UTF8String
 import org.bson.codecs.configuration.{CodecRegistries, CodecRegistry}
@@ -30,6 +24,8 @@ import scala.concurrent.Future
 import org.mongodb.scala.model.Filters._
 
 import java.{lang, util}
+import scala.collection.JavaConverters
+import scala.collection.JavaConverters.asScalaBufferConverter
 
 case class ColumnStat(name: String, min: Int, max: Int)
 
@@ -109,7 +105,7 @@ object MongoConnection extends Logging {
 
   }
 
-  def readInfo(objectName: String): (Seq[(String, Long, Seq[Map[String, Any]])], StructType) = {
+  def readInfo(objectName: String): (Seq[(String, Long, Seq[ColumnStat])], StructType) = {
 
     val codecFile: CodecRegistry = CodecRegistries.fromRegistries(
       CodecRegistries.fromProviders(classOf[ColumnStat]),
@@ -118,9 +114,9 @@ object MongoConnection extends Logging {
     val codecSchema: CodecRegistry = CodecRegistries.fromRegistries(
       CodecRegistries.fromProviders(classOf[SchemaIndex]), DEFAULT_CODEC_REGISTRY)
 
-    @transient lazy val fileCollection: MongoCollection[FileIndex] =
+    @transient lazy val fileCollection: MongoCollection[Document] =
       mongoDatabase
-        .withCodecRegistry(codecFile)
+//        .withCodecRegistry(codecFile)
         .getCollection(collectionName = "file_index")
 
     @transient lazy val schemaCollection: MongoCollection[SchemaIndex] =
@@ -128,26 +124,28 @@ object MongoConnection extends Logging {
 
     val filter: Bson = Filters.eq("objectName", objectName)
 
-    val filesFuture: Future[Seq[(String, Long, Seq[Map[String, Any]])]] = fileCollection.find(filter).collect().toFuture().map(
-      (rows: Seq[FileIndex]) => rows.map((row: FileIndex) => {
-        (row.path, row.commitMillis, row.columnStats)
+    val filesFuture: Future[Seq[(String, Long, Seq[ColumnStat])]] = fileCollection.find(filter).collect().toFuture().map(
+      (rows: Seq[Document]) => rows.map((row: Document) => {
+        val path: String = row.getString("path")
+        val commitMillis: Long = row.getLong("commitMillis")
+        val columnStatsBson: Seq[BsonDocument] = row.get("columnStats").get.asInstanceOf[BsonArray].getValues.asScala.map { bsonValue =>
+          bsonValue.asDocument() // Предполагаем, что каждый элемент - это BsonDocument
+        }
+
+        val colStat: Seq[ColumnStat] = columnStatsBson.map(
+          (doc: BsonDocument) => {
+            val name = doc.getString("name").getValue
+            val min = doc.getInteger("min")
+            val max = doc.getInteger("max")
+            ColumnStat(name = name, min = min, max = max)
+          }
+        )
+
+        (path, commitMillis, colStat)
       })
     )
 
-//    val filesFuture: Future[Seq[(String, Long, Seq[ColumnStat])]] = fileCollection.find(filter).collect().toFuture().map(
-//      (rows: Seq[Document]) => rows.map((row: Document) => {
-//        val objectName: String = row.getString("objectName")
-//        val commitMillis: lang.Long = row.getLong("commitMillis")
-//        val columnStats: util.List[Document] = row.getList("columnStats", classOf[Document]).toArray().map(
-//          (statDoc: Document) => {
-//
-//          }
-//        )
-//        (objectName, commitMillis.toLong, columnStats)
-//      })
-//    )
-
-    val files: Seq[(String, Long, Seq[Map[String, Any]])] = Await.result(filesFuture, 30.seconds)
+    val files: Seq[(String, Long, Seq[ColumnStat])] = Await.result(filesFuture, 30.seconds)
 
     log.info(s"Files for read ${files.mkString(", ")}")
 
