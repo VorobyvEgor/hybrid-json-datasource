@@ -10,7 +10,7 @@ import org.apache.spark.sql.types.StructType
 import scala.io.BufferedSource
 import java.util
 
-class JsonRDD(files: Seq[(String, Long, Seq[ColumnStat])], schema: StructType)
+class JsonRDD (files: Seq[(String, Long, Seq[ColumnStat])], schema: StructType)
   extends RDD[InternalRow](SparkSession.active.sparkContext, Nil)
     with Logging {
 
@@ -24,7 +24,7 @@ class JsonRDD(files: Seq[(String, Long, Seq[ColumnStat])], schema: StructType)
     parser.toRow(lines).map(
       (line: InternalRow) => {
         log.info(s"Line for parsing: ${line.toString}\n")
-        val row = InternalRow.fromSeq(Seq(fileWriteTime) ++ line.toSeq(schema))
+        val row: InternalRow = InternalRow.fromSeq(Seq(fileWriteTime) ++ line.toSeq(schema))
         log.info(s"Row for reading: ${row.toString}\n")
         row
       }

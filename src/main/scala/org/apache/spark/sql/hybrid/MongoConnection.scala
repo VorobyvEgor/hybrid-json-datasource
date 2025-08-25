@@ -135,8 +135,8 @@ object MongoConnection extends Logging {
         val colStat: Seq[ColumnStat] = columnStatsBson.map(
           (doc: BsonDocument) => {
             val name = doc.getString("name").getValue
-            val min = doc.getInteger("min")
-            val max = doc.getInteger("max")
+            val min = doc.getInteger("min").intValue()
+            val max = doc.getInteger("max").intValue()
             ColumnStat(name = name, min = min, max = max)
           }
         )

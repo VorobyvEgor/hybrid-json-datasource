@@ -4,8 +4,8 @@ import org.apache.spark.internal.Logging
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.InternalRow
 import org.apache.spark.sql.{DataFrame, SQLContext, SaveMode}
-import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, RelationProvider, SchemaRelationProvider}
-import org.apache.spark.sql.types.{IntegerType, StructField, StructType}
+import org.apache.spark.sql.sources.{BaseRelation, CreatableRelationProvider, DataSourceRegister, Filter, RelationProvider, SchemaRelationProvider}
+import org.apache.spark.sql.types.{IntegerType, LongType, StructField, StructType}
 import org.bson.codecs.configuration.{CodecRegistries, CodecRegistry}
 import org.mongodb.scala.{MongoClient, MongoDatabase}
 import org.mongodb.scala.MongoClient.DEFAULT_CODEC_REGISTRY

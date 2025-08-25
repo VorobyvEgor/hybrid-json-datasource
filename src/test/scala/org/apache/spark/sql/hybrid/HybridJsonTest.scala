@@ -57,23 +57,10 @@ class HybridJsonTest extends AnyFlatSpec
 
     import spark.implicits._
 
-    val df = spark
-      .range(0, 20, 1, 1)
-      .withColumn("id", 'id.cast("int"))
-      .withColumn("id2", 'id * 2)
+    val test = Seq(1, 2, 3, 4)
+    println(s"=====!!!!!${test.}")
 
-    df.show()
-    df.printSchema()
-    val schema = df.schema
 
-    val intStructs: Seq[(StructField, Int)] = schema.zipWithIndex
-      .filter { case (field, _) => field.dataType == IntegerType }
-
-    log.info(s"parse Schema: ${intStructs.mkString("||")}")
-
-    df.write.format("hybrid-json")
-      .options(optionsWrite)
-      .save()
 
 
 
